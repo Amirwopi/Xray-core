@@ -8,6 +8,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: write
+  actions: write
+
+env:
+  RELEASE_NAME_PREFIX: Xray-amirwopi-killswitch
+
 jobs:
   check-assets:
     runs-on: ubuntu-latest
@@ -54,14 +61,27 @@ jobs:
             fi
           done
 
+      - name: Trigger Asset Update Workflow if Assets Missing
+        if: steps.check-assets.outputs.missing == 'true'
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'scheduled-assets-update.yml',
+              ref: context.ref
+            });
+            console.log('Triggered scheduled-assets-update.yml due to missing assets on branch:', context.ref);
+
       - name: Sleep for 90 seconds if Assets Missing
         if: steps.check-assets.outputs.missing == 'true'
         run: sleep 90
 
   build:
     needs: check-assets
-    permissions:
-      contents: write
     strategy:
       matrix:
         include:
@@ -90,6 +110,15 @@ jobs:
           _NAME=${{ matrix.assetname }}
           echo "GOOS: ${{ matrix.goos }}, GOARCH: ${{ matrix.goarch }}, RELEASE_NAME: $_NAME"
           echo "ASSET_NAME=$_NAME" >> $GITHUB_ENV
+
+      - name: Resolve release tag
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -151,14 +180,14 @@ jobs:
           cp ${GITHUB_WORKSPACE}/LICENSE ./build_assets/LICENSE
 
       - name: Create ZIP archive
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           pushd build_assets || exit 1
           touch -mt $(date +%Y01010000) *
-          zip -9vr ../Xray-${{ env.ASSET_NAME }}.zip .
+          zip -9vr ../${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip .
           popd || exit 1
-          FILE=./Xray-${{ env.ASSET_NAME }}.zip
+          FILE=./${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip
           DGST=$FILE.dgst
           for METHOD in {"md5","sha1","sha256","sha512"}
           do
@@ -166,17 +195,17 @@ jobs:
           done
 
       - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./Xray-${{ env.ASSET_NAME }}.zip*
-          tag: ${{ github.ref }}
-          file_glob: true
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          files: ./${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip*
+          fail_on_unmatched_files: true
 
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: Xray-${{ env.ASSET_NAME }}
+          name: ${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}
           path: |
             ./build_assets/*

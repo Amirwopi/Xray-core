@@ -16,6 +16,9 @@ on:
         type: boolean
         default: false
 
+env:
+  CUSTOM_IMAGE_NAME: ghcr.io/amirwopi/xray-core-killswitch
+
 jobs:
   build-and-push:
     if: (github.event.action != 'published') || (github.event.action == 'published' && github.event.release.prerelease == true)
@@ -25,12 +28,9 @@ jobs:
       packages: write
 
     steps:
-      - name: Set repository and image name to lowercase
-        env:
-          IMAGE_NAME: "${{ github.repository }}"
+      - name: Set custom image name
         run: |
-          echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
-          echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
+          echo "FULL_IMAGE_NAME=${CUSTOM_IMAGE_NAME}" >>${GITHUB_ENV}
 
       - name: Validate and extract tag
         run: |
@@ -47,11 +47,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$SOURCE_TAG" =~ ^v[0-9]+\.[0-9] ]]; then
-            IMAGE_TAG="${SOURCE_TAG#v}"
-          else
-            IMAGE_TAG="$SOURCE_TAG"
-          fi
+          IMAGE_TAG="$SOURCE_TAG"
 
           echo "Docker image tag: '$IMAGE_TAG'."
           echo "IMAGE_TAG=$IMAGE_TAG" >>${GITHUB_ENV}

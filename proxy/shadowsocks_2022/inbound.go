@@ -109,6 +109,8 @@ func (i *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata M.M
 		Email: i.email,
 		Level: uint32(i.level),
 	}
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
 		From:   metadata.Source,
 		To:     metadata.Destination,
@@ -134,6 +136,8 @@ func (i *Inbound) NewPacketConnection(ctx context.Context, conn N.PacketConn, me
 		Email: i.email,
 		Level: uint32(i.level),
 	}
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
 		From:   metadata.Source,
 		To:     metadata.Destination,

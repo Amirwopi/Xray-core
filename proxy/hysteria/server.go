@@ -89,6 +89,8 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	if v, ok := iConn.(User); ok && v.User() != nil {
 		inbound.User = v.User()
 	}
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 
 	if _, ok := iConn.(*hysteria.InterConn); ok {
 		reader := &UDPReader{

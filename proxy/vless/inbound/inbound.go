@@ -536,6 +536,8 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vless"
 	inbound.User = request.User
 	inbound.VlessRoute = net.PortFromBytes(userSentID[6:8])
+	releaseTrackedConnection := session.TrackUserConnection(ctx, connection)
+	defer releaseTrackedConnection()
 
 	account := request.User.Account.(*vless.MemoryAccount)
 

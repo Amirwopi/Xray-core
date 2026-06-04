@@ -58,6 +58,20 @@ message GetInboundUsersCountResponse {
   int64 count = 1;
 }
 
+message KillUserConnectionsRequest {
+  string email = 1;
+  string inbound_tag = 2;
+  string reason = 3;
+  bool include_scoped_aliases = 4;
+  bool all_inbounds = 5;
+}
+
+message KillUserConnectionsResponse {
+  int64 killed_count = 1;
+  repeated string matched_identities = 2;
+  bool success = 3;
+}
+
 message AddOutboundRequest {
   core.OutboundHandlerConfig outbound = 1;
 }
@@ -95,6 +109,8 @@ service HandlerService {
   rpc GetInboundUsers(GetInboundUserRequest) returns (GetInboundUserResponse) {}
 
   rpc GetInboundUsersCount(GetInboundUserRequest) returns (GetInboundUsersCountResponse) {}
+
+  rpc KillUserConnections(KillUserConnectionsRequest) returns (KillUserConnectionsResponse) {}
 
   rpc AddOutbound(AddOutboundRequest) returns (AddOutboundResponse) {}
 
