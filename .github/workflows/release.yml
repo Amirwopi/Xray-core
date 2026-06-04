@@ -8,6 +8,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+env:
+  RELEASE_NAME_PREFIX: Xray-amirwopi-killswitch
+
 jobs:
   check-assets:
     runs-on: ubuntu-latest
@@ -266,9 +269,9 @@ jobs:
         run: |
           pushd build_assets || exit 1
           touch -mt $(date +%Y01010000) *
-          zip -9vr ../Xray-${{ env.ASSET_NAME }}.zip .
+          zip -9vr ../${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip .
           popd || exit 1
-          FILE=./Xray-${{ env.ASSET_NAME }}.zip
+          FILE=./${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip
           DGST=$FILE.dgst
           for METHOD in {"md5","sha1","sha256","sha512"}
           do
@@ -280,13 +283,13 @@ jobs:
         if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./Xray-${{ env.ASSET_NAME }}.zip*
+          file: ./${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}.zip*
           tag: ${{ github.ref }}
           file_glob: true
 
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: Xray-${{ env.ASSET_NAME }}
+          name: ${{ env.RELEASE_NAME_PREFIX }}-${{ env.ASSET_NAME }}
           path: |
             ./build_assets/*
