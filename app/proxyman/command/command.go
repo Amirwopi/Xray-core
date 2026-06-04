@@ -7,6 +7,7 @@ import (
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/protocol"
+	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/inbound"
 	"github.com/xtls/xray-core/features/outbound"
@@ -160,6 +161,23 @@ func (s *handlerServer) GetInboundUsersCount(ctx context.Context, request *GetIn
 		return nil, errors.New("proxy is not a UserManager")
 	}
 	return &GetInboundUsersCountResponse{Count: um.GetUsersCount(ctx)}, nil
+}
+
+func (s *handlerServer) KillUserConnections(ctx context.Context, request *KillUserConnectionsRequest) (*KillUserConnectionsResponse, error) {
+	result := session.DefaultUserConnectionTracker().CloseUserConnections(
+		request.GetEmail(),
+		session.CloseUserConnectionsOptions{
+			InboundTag:           request.GetInboundTag(),
+			IncludeScopedAliases: request.GetIncludeScopedAliases(),
+			AllInbounds:          request.GetAllInbounds(),
+		},
+	)
+
+	return &KillUserConnectionsResponse{
+		KilledCount:       int64(result.KilledCount),
+		MatchedIdentities: result.MatchedIdentities,
+		Success:           true,
+	}, nil
 }
 
 func (s *handlerServer) AddOutbound(ctx context.Context, request *AddOutboundRequest) (*AddOutboundResponse, error) {

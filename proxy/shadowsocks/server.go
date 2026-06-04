@@ -131,6 +131,8 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 	defer udpServer.RemoveRay()
 
 	inbound := session.InboundFromContext(ctx)
+	releaseTrackedConnection := func() {}
+	defer releaseTrackedConnection()
 	var dest *net.Destination
 	reader := buf.NewPacketReader(conn)
 	for {
@@ -152,6 +154,7 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 				request, data, err = DecodeUDPPacket(s.validator, payload)
 				if err == nil {
 					inbound.User = request.User
+					releaseTrackedConnection = session.TrackUserConnection(ctx, conn)
 				}
 			}
 
@@ -221,6 +224,8 @@ func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dis
 		panic("no inbound metadata")
 	}
 	inbound.User = request.User
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 
 	dest := request.Destination()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{

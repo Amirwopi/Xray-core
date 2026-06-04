@@ -272,6 +272,8 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vmess"
 	inbound.CanSpliceCopy = 3
 	inbound.User = request.User
+	releaseTrackedConnection := session.TrackUserConnection(ctx, connection)
+	defer releaseTrackedConnection()
 
 	sessionPolicy = h.policyManager.ForLevel(request.User.Level)
 

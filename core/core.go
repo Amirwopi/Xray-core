@@ -24,7 +24,7 @@ var (
 )
 
 var (
-	build    = "Custom"
+	build    = "amirwopi-killswitch"
 	codename = "Xray, Penetrates Everything."
 	intro    = "A unified platform for anti-censorship."
 )

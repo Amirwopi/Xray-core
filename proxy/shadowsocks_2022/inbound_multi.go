@@ -231,6 +231,8 @@ func (i *MultiUserInbound) NewConnection(ctx context.Context, conn net.Conn, met
 	userInt, _ := A.UserFromContext[int](ctx)
 	user := i.users[userInt]
 	inbound.User = user
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
 		From:   metadata.Source,
 		To:     metadata.Destination,
@@ -255,6 +257,8 @@ func (i *MultiUserInbound) NewPacketConnection(ctx context.Context, conn N.Packe
 	userInt, _ := A.UserFromContext[int](ctx)
 	user := i.users[userInt]
 	inbound.User = user
+	releaseTrackedConnection := session.TrackUserConnection(ctx, conn)
+	defer releaseTrackedConnection()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
 		From:   metadata.Source,
 		To:     metadata.Destination,
