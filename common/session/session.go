@@ -49,6 +49,16 @@ type Inbound struct {
 	User *protocol.MemoryUser
 	// VlessRoute is the user-sent VLESS UUID's 7th<<8 | 8th bytes.
 	VlessRoute net.Port
+	// Transport is the application transport used by the inbound, e.g. ws or httpupgrade.
+	Transport string
+	// Host is the normalized incoming host header value, if available.
+	Host string
+	// Path is the normalized incoming request path, if available.
+	Path string
+	// ServerName is the inbound TLS/REALITY SNI, if available.
+	ServerName string
+	// CamouflageHost is the configured fake or expected host, if available.
+	CamouflageHost string
 	// Used by splice copy. Conn is actually internet.Connection. May be nil.
 	Conn net.Conn
 	// Used by splice copy. Timer of the inbound buf copier. May be nil.

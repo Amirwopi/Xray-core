@@ -253,12 +253,16 @@ func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context,
 	}
 
 	for _, rule := range r.rules {
-		if rule.Apply(ctx) {
+		matched := rule.Apply(ctx)
+		errors.LogDebug(r.ctx, "route debug: ruleTag=[", rule.RuleTag, "] target=[", rule.Tag, "] matched=", matched, " ", routeDebugString(ctx))
+		if matched {
+			errors.LogInfo(r.ctx, "route debug: matched ruleTag=[", rule.RuleTag, "] target=[", rule.Tag, "] ", routeDebugString(ctx))
 			return rule, ctx, nil
 		}
 	}
 
 	if r.domainStrategy != Config_IpIfNonMatch || len(ctx.GetTargetDomain()) == 0 || skipDNSResolve {
+		errors.LogInfo(r.ctx, "route debug: no route matched before fallback ", routeDebugString(ctx))
 		return nil, ctx, common.ErrNoClue
 	}
 
@@ -266,11 +270,15 @@ func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context,
 
 	// Try applying rules again if we have IPs.
 	for _, rule := range r.rules {
-		if rule.Apply(ctx) {
+		matched := rule.Apply(ctx)
+		errors.LogDebug(r.ctx, "route debug: post-dns ruleTag=[", rule.RuleTag, "] target=[", rule.Tag, "] matched=", matched, " ", routeDebugString(ctx))
+		if matched {
+			errors.LogInfo(r.ctx, "route debug: matched post-dns ruleTag=[", rule.RuleTag, "] target=[", rule.Tag, "] ", routeDebugString(ctx))
 			return rule, ctx, nil
 		}
 	}
 
+	errors.LogInfo(r.ctx, "route debug: no route matched after dns fallback ", routeDebugString(ctx))
 	return nil, ctx, common.ErrNoClue
 }
 

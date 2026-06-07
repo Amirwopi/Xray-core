@@ -99,7 +99,23 @@ func (s *server) upgrade(conn net.Conn) (stat.Connection, error) {
 		}
 	}
 
-	return stat.Connection(newConnection(conn, remoteAddr)), nil
+	serverName := ""
+	if stateConn, ok := conn.(interface{ ConnectionState() tls.ConnectionState }); ok {
+		serverName = strings.ToLower(stateConn.ConnectionState().ServerName)
+	}
+	camouflageHost := ""
+	if s.config != nil {
+		camouflageHost = internet.NormalizeHTTPHost(s.config.Host)
+	}
+	metadata := internet.InboundMetadata{
+		Transport:      protocolName,
+		Host:           internet.NormalizeHTTPHost(req.Host),
+		Path:           req.URL.Path,
+		ServerName:     serverName,
+		CamouflageHost: camouflageHost,
+	}
+
+	return stat.Connection(internet.WithInboundMetadata(newConnection(conn, remoteAddr), metadata)), nil
 }
 
 func (s *server) keepAccepting() {

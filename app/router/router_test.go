@@ -274,3 +274,44 @@ func TestIPIfNonMatchIP(t *testing.T) {
 		t.Error("expect tag 'test', bug actually ", tag)
 	}
 }
+
+func TestRouterMatchesInboundMetadataAttributes(t *testing.T) {
+	config := &Config{
+		Rule: []*RoutingRule{
+			{
+				TargetTag: &RoutingRule_Tag{
+					Tag: "surfshark-TR",
+				},
+				Attributes: map[string]string{
+					"xray.inbound.host":        "^v4\\.phototika\\.ir$",
+					"xray.inbound.path":        "^/v/Ob01p$",
+					"xray.inbound.server_name": "^v4\\.phototika\\.ir$",
+				},
+			},
+		},
+	}
+
+	mockCtl := gomock.NewController(t)
+	defer mockCtl.Finish()
+
+	mockDNS := mocks.NewDNSClient(mockCtl)
+	r := new(Router)
+	common.Must(r.Init(context.TODO(), config, mockDNS, nil, nil))
+
+	ctx := session.ContextWithOutbounds(context.Background(), []*session.Outbound{{
+		Target: net.TCPDestination(net.DomainAddress("example.com"), 443),
+	}})
+	ctx = session.ContextWithInbound(ctx, &session.Inbound{
+		Tag:            "TR-AC-WS-X2",
+		Transport:      "ws",
+		Host:           "v4.phototika.ir",
+		Path:           "/v/Ob01p",
+		ServerName:     "v4.phototika.ir",
+		CamouflageHost: "v4.phototika.ir",
+	})
+	route, err := r.PickRoute(routing_session.AsRoutingContext(ctx))
+	common.Must(err)
+	if tag := route.GetOutboundTag(); tag != "surfshark-TR" {
+		t.Fatalf("expect tag 'surfshark-TR', got %q", tag)
+	}
+}

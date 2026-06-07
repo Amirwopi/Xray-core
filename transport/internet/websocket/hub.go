@@ -84,7 +84,18 @@ func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Req
 		}
 	}
 
-	h.ln.addConn(NewConnection(conn, remoteAddr, extraReader, h.ln.config.HeartbeatPeriod))
+	serverName := ""
+	if request.TLS != nil {
+		serverName = strings.ToLower(request.TLS.ServerName)
+	}
+	metadata := internet.InboundMetadata{
+		Transport:      protocolName,
+		Host:           internet.NormalizeHTTPHost(request.Host),
+		Path:           request.URL.Path,
+		ServerName:     serverName,
+		CamouflageHost: internet.NormalizeHTTPHost(h.host),
+	}
+	h.ln.addConn(internet.WithInboundMetadata(NewConnection(conn, remoteAddr, extraReader, h.ln.config.HeartbeatPeriod), metadata))
 }
 
 type Listener struct {

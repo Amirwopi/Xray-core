@@ -40,6 +40,7 @@ import (
 	"github.com/xtls/xray-core/proxy/vless/encoding"
 	"github.com/xtls/xray-core/proxy/vless/encryption"
 	"github.com/xtls/xray-core/transport"
+	"github.com/xtls/xray-core/transport/internet"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
@@ -536,8 +537,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vless"
 	inbound.User = request.User
 	inbound.VlessRoute = net.PortFromBytes(userSentID[6:8])
+	populateInboundRoutingMetadata(inbound, iConn)
 	releaseTrackedConnection := session.TrackUserConnection(ctx, connection)
 	defer releaseTrackedConnection()
+	errors.LogInfo(ctx, "route debug: inbound matched tag=[", inbound.Tag, "] user=[", request.User.Email, "] transport=[", inbound.Transport, "] host=[", inbound.Host, "] path=[", inbound.Path, "] serverName=[", inbound.ServerName, "] camouflageHost=[", inbound.CamouflageHost, "] vlessRoute=[", inbound.VlessRoute, "]")
 
 	account := request.User.Account.(*vless.MemoryAccount)
 
@@ -699,4 +702,28 @@ func (r *Reverse) SenderSettings() *serial.TypedMessage {
 
 func (r *Reverse) ProxySettings() *serial.TypedMessage {
 	return nil
+}
+
+func populateInboundRoutingMetadata(inbound *session.Inbound, conn net.Conn) {
+	if inbound == nil || conn == nil {
+		return
+	}
+	if metadata, ok := internet.GetInboundMetadata(conn); ok {
+		inbound.Transport = metadata.Transport
+		inbound.Host = metadata.Host
+		inbound.Path = metadata.Path
+		inbound.ServerName = metadata.ServerName
+		inbound.CamouflageHost = metadata.CamouflageHost
+	}
+	if inbound.ServerName == "" {
+		if tlsConn, ok := conn.(*tls.Conn); ok {
+			inbound.ServerName = tlsConn.ConnectionState().ServerName
+		} else if realityConn, ok := conn.(*reality.Conn); ok {
+			inbound.ServerName = realityConn.ConnectionState().ServerName
+		}
+	}
+	inbound.Transport = strings.ToLower(inbound.Transport)
+	inbound.Host = strings.ToLower(inbound.Host)
+	inbound.ServerName = strings.ToLower(inbound.ServerName)
+	inbound.CamouflageHost = strings.ToLower(inbound.CamouflageHost)
 }

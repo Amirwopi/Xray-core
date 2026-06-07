@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"strings"
 
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/session"
@@ -137,10 +138,46 @@ func (ctx *Context) GetVlessRoute() net.Port {
 
 // GetAttributes implements routing.Context.
 func (ctx *Context) GetAttributes() map[string]string {
-	if ctx.Content == nil {
-		return nil
+	var attrs map[string]string
+	if ctx.Content != nil && len(ctx.Content.Attributes) > 0 {
+		attrs = make(map[string]string, len(ctx.Content.Attributes)+5)
+		for key, value := range ctx.Content.Attributes {
+			attrs[key] = value
+		}
 	}
-	return ctx.Content.Attributes
+	if ctx.Inbound != nil {
+		if ctx.Inbound.Transport != "" {
+			if attrs == nil {
+				attrs = make(map[string]string, 5)
+			}
+			attrs[routing.AttrInboundTransport] = strings.ToLower(ctx.Inbound.Transport)
+		}
+		if ctx.Inbound.Host != "" {
+			if attrs == nil {
+				attrs = make(map[string]string, 5)
+			}
+			attrs[routing.AttrInboundHost] = strings.ToLower(ctx.Inbound.Host)
+		}
+		if ctx.Inbound.Path != "" {
+			if attrs == nil {
+				attrs = make(map[string]string, 5)
+			}
+			attrs[routing.AttrInboundPath] = ctx.Inbound.Path
+		}
+		if ctx.Inbound.ServerName != "" {
+			if attrs == nil {
+				attrs = make(map[string]string, 5)
+			}
+			attrs[routing.AttrInboundServerName] = strings.ToLower(ctx.Inbound.ServerName)
+		}
+		if ctx.Inbound.CamouflageHost != "" {
+			if attrs == nil {
+				attrs = make(map[string]string, 5)
+			}
+			attrs[routing.AttrInboundCamouflageHost] = strings.ToLower(ctx.Inbound.CamouflageHost)
+		}
+	}
+	return attrs
 }
 
 // GetSkipDNSResolve implements routing.Context.
