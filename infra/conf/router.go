@@ -2,12 +2,14 @@ package conf
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/xtls/xray-core/app/router"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/geodata"
 	"github.com/xtls/xray-core/common/serial"
+	feature_routing "github.com/xtls/xray-core/features/routing"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -132,23 +134,27 @@ type WebhookRuleConfig struct {
 func parseFieldRule(msg json.RawMessage) (*router.RoutingRule, error) {
 	type RawFieldRule struct {
 		RouterRule
-		Domain     *StringList        `json:"domain"`
-		Domains    *StringList        `json:"domains"`
-		IP         *StringList        `json:"ip"`
-		Port       *PortList          `json:"port"`
-		Network    *NetworkList       `json:"network"`
-		SourceIP   *StringList        `json:"sourceIP"`
-		Source     *StringList        `json:"source"`
-		SourcePort *PortList          `json:"sourcePort"`
-		User       *StringList        `json:"user"`
-		VlessRoute *PortList          `json:"vlessRoute"`
-		InboundTag *StringList        `json:"inboundTag"`
-		Protocols  *StringList        `json:"protocol"`
-		Attributes map[string]string  `json:"attrs"`
-		LocalIP    *StringList        `json:"localIP"`
-		LocalPort  *PortList          `json:"localPort"`
-		Process    *StringList        `json:"process"`
-		Webhook    *WebhookRuleConfig `json:"webhook"`
+		Domain         *StringList        `json:"domain"`
+		Domains        *StringList        `json:"domains"`
+		IP             *StringList        `json:"ip"`
+		Port           *PortList          `json:"port"`
+		Network        *NetworkList       `json:"network"`
+		SourceIP       *StringList        `json:"sourceIP"`
+		Source         *StringList        `json:"source"`
+		SourcePort     *PortList          `json:"sourcePort"`
+		User           *StringList        `json:"user"`
+		VlessRoute     *PortList          `json:"vlessRoute"`
+		InboundTag     *StringList        `json:"inboundTag"`
+		Protocols      *StringList        `json:"protocol"`
+		Attributes     map[string]string  `json:"attrs"`
+		InboundHost    *StringList        `json:"inboundHost"`
+		WSPath         *StringList        `json:"wsPath"`
+		ServerName     *StringList        `json:"serverName"`
+		CamouflageHost *StringList        `json:"camouflageHost"`
+		LocalIP        *StringList        `json:"localIP"`
+		LocalPort      *PortList          `json:"localPort"`
+		Process        *StringList        `json:"process"`
+		Webhook        *WebhookRuleConfig `json:"webhook"`
 	}
 	rawFieldRule := new(RawFieldRule)
 	err := json.Unmarshal(msg, rawFieldRule)
@@ -256,6 +262,10 @@ func parseFieldRule(msg json.RawMessage) (*router.RoutingRule, error) {
 	if len(rawFieldRule.Attributes) > 0 {
 		rule.Attributes = rawFieldRule.Attributes
 	}
+	mergeInboundAttributeRule(rule, feature_routing.AttrInboundHost, rawFieldRule.InboundHost, true)
+	mergeInboundAttributeRule(rule, feature_routing.AttrInboundPath, rawFieldRule.WSPath, false)
+	mergeInboundAttributeRule(rule, feature_routing.AttrInboundServerName, rawFieldRule.ServerName, true)
+	mergeInboundAttributeRule(rule, feature_routing.AttrInboundCamouflageHost, rawFieldRule.CamouflageHost, true)
 
 	if rawFieldRule.Process != nil && len(*rawFieldRule.Process) > 0 {
 		rule.Process = *rawFieldRule.Process
@@ -270,6 +280,30 @@ func parseFieldRule(msg json.RawMessage) (*router.RoutingRule, error) {
 	}
 
 	return rule, nil
+}
+
+func mergeInboundAttributeRule(rule *router.RoutingRule, key string, values *StringList, normalizeLower bool) {
+	if values == nil || len(*values) == 0 {
+		return
+	}
+	if rule.Attributes == nil {
+		rule.Attributes = make(map[string]string)
+	}
+	parts := make([]string, 0, len(*values))
+	for _, value := range *values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if normalizeLower {
+			value = strings.ToLower(value)
+		}
+		parts = append(parts, regexp.QuoteMeta(value))
+	}
+	if len(parts) == 0 {
+		return
+	}
+	rule.Attributes[key] = "^(?:" + strings.Join(parts, "|") + ")$"
 }
 
 func parseRule(msg json.RawMessage) (*router.RoutingRule, error) {

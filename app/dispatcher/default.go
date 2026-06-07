@@ -457,11 +457,19 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 			outTag := route.GetOutboundTag()
 			if h := d.ohm.GetHandler(outTag); h != nil {
 				isPickRoute = 2
+				attrs := routingLink.GetAttributes()
+				attr := func(key string) string {
+					if attrs == nil {
+						return ""
+					}
+					return attrs[strings.ToLower(key)]
+				}
 				if route.GetRuleTag() == "" {
 					errors.LogInfo(ctx, "taking detour [", outTag, "] for [", destination, "]")
 				} else {
 					errors.LogInfo(ctx, "Hit route rule: [", route.GetRuleTag(), "] so taking detour [", outTag, "] for [", destination, "]")
 				}
+				errors.LogInfo(ctx, "route debug: selected outbound=[", outTag, "] ruleTag=[", route.GetRuleTag(), "] inboundTag=[", inTag, "] host=[", attr(routing.AttrInboundHost), "] path=[", attr(routing.AttrInboundPath), "] serverName=[", attr(routing.AttrInboundServerName), "] camouflageHost=[", attr(routing.AttrInboundCamouflageHost), "] transport=[", attr(routing.AttrInboundTransport), "] target=[", destination, "]")
 				handler = h
 			} else {
 				errors.LogWarning(ctx, "non existing outTag: ", outTag)
@@ -471,6 +479,14 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 			}
 		} else {
 			errors.LogInfo(ctx, "default route for ", destination)
+			attrs := routingLink.GetAttributes()
+			attr := func(key string) string {
+				if attrs == nil {
+					return ""
+				}
+				return attrs[strings.ToLower(key)]
+			}
+			errors.LogInfo(ctx, "route debug: no route match, falling back to default outbound inboundTag=[", inTag, "] host=[", attr(routing.AttrInboundHost), "] path=[", attr(routing.AttrInboundPath), "] serverName=[", attr(routing.AttrInboundServerName), "] camouflageHost=[", attr(routing.AttrInboundCamouflageHost), "] transport=[", attr(routing.AttrInboundTransport), "] target=[", destination, "] err=[", err, "]")
 		}
 	}
 

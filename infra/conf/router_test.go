@@ -234,5 +234,36 @@ func TestRouterConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			Input: `{
+				"domainStrategy": "AsIs",
+				"rules": [
+					{
+						"inboundHost": "v4.phototika.ir",
+						"wsPath": "/v/Ob01p",
+						"serverName": "v4.phototika.ir",
+						"camouflageHost": "v4.phototika.ir",
+						"outboundTag": "surfshark-TR"
+					}
+				]
+			}`,
+			Parser: createParser(),
+			Output: &router.Config{
+				DomainStrategy: router.Config_AsIs,
+				Rule: []*router.RoutingRule{
+					{
+						Attributes: map[string]string{
+							"xray.inbound.host":            "^(?:v4\\.phototika\\.ir)$",
+							"xray.inbound.path":            "^(?:/v/Ob01p)$",
+							"xray.inbound.server_name":     "^(?:v4\\.phototika\\.ir)$",
+							"xray.inbound.camouflage_host": "^(?:v4\\.phototika\\.ir)$",
+						},
+						TargetTag: &router.RoutingRule_Tag{
+							Tag: "surfshark-TR",
+						},
+					},
+				},
+			},
+		},
 	})
 }
